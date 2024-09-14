@@ -1,22 +1,24 @@
 /*
-Montaje con dos pulsadores: uno para iniciar la muestra de datos y 
-otro para detenerla. En realidad, un pulsador en alto permite que se 
-haga la lectura del pin analógico, mientras que el otro pulsador en 
-alto le asigna un valor de 0 a este pin.
 
-Próximamente se modificará el montaje de tal manera que un pulsador 
-solicite la información de la señal capturada (frecuencia y amplitud) 
-calculada con algún algoritmo.
+RECOLECCIÓN DE DATOS
 
+FALTA: CORREGIR FUNCIONAMIENTO DEL BOTON 2 Y VERIFICAR LOS DATOS
+RECOLECTADOS
 */
+
+
 #include <Adafruit_LiquidCrystal.h>
 Adafruit_LiquidCrystal lcd_1(0);
 
-int val = 0;
+float val = 0;
 int analogPin = 0;
-int button1Pin = 2;
-int button2Pin = 4;
+int buttonStart = 4;
+int buttonInfo = 2;
 bool startData = false;
+bool startInfo = false;
+
+float *signal;
+int arregloSize = 300;
 
 void setup()
 {
@@ -28,22 +30,51 @@ void setup()
 
 void loop()
 { 
-  lcd_1.setCursor(2, 1);
-  if(digitalRead(button1Pin) == HIGH) {
+  if(digitalRead(buttonStart) == HIGH) {
     startData = true;
-  }
-  if(digitalRead(button2Pin) == HIGH) {
-    startData = false;
+    lcd_1.clear();
+  	lcd_1.setCursor(0, 0);
+  	lcd_1.print("Almacenando");
+  	lcd_1.setCursor(0, 1);
+  	lcd_1.print("Datos...");
   }
   
-  if(startData) { 
+  if(digitalRead(buttonInfo) == HIGH) {
+    startInfo = true;
+    lcd_1.clear();
+  	lcd_1.setCursor(0, 0);
+  	lcd_1.print("Mostrando");
+  	lcd_1.setCursor(0, 1);
+  	lcd_1.print("Datos...");
+  }
+  
+  if (startData){
+  	almacenarDatos();
+    
+  }
+  
+  if (startInfo){
+    startData = false;
+  	mostrarDatos();
+  }
+}
+
+void almacenarDatos() {
+  signal = new float[arregloSize];
+   for (int i = 0; i < arregloSize; i++) {
     val = analogRead(analogPin);
+    val = val*(5.0/1023.0);
+    signal[i] = val;
+    Serial.println(signal[i]);
+    delay(10);
   }
-  else{
-    val = 0;
-  }
+}
+
+void mostrarDatos(){
+  /*
+  lcd_1.setCursor(2, 1);
   lcd_1.print(val);
   delay(10);
   Serial.println(val);
-  lcd_1.clear();
+  lcd_1.clear();*/
 }
