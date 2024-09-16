@@ -1,5 +1,4 @@
 #include <Adafruit_LiquidCrystal.h>
-using namespace std;
 Adafruit_LiquidCrystal lcd_1(0);
 
 float val = 0;
@@ -8,17 +7,19 @@ int buttonStart = 4;
 int buttonInfo = 2;
 bool startData = false;
 bool startInfo = false;
-float tolerancia = 0.01;
+float tolerancia = 0.03;
+unsigned long finTime = 0;
+unsigned long startTime =0;
 
-int arregloSize = 200;
-float *signal = new float[arregloSize];
+int arregloSize = 230;
+float *signal=new float[230];
 
 int i = 0;
 
 void setup()
 {
-  pinMode(2, INPUT);
-  pinMode(4, INPUT);
+  pinMode(2, INPUT_PULLUP);
+  pinMode(4, INPUT_PULLUP);
   Serial.begin(9600);
   lcd_1.begin(16, 2);
 }
@@ -28,6 +29,7 @@ void loop()
   if(digitalRead(buttonStart) == HIGH) {
     i = 0;
     startData = true;
+    lcd_1.clear();
   	lcd_1.setCursor(0, 0);
   	lcd_1.print("Almacenando");
   	lcd_1.setCursor(0, 1);
@@ -40,8 +42,9 @@ void loop()
   if(digitalRead(buttonInfo) == HIGH) {
     i = 0;
     startInfo = true;
+    lcd_1.clear();
   	lcd_1.setCursor(0, 0);
-  	lcd_1.print("Mostrandolos");
+  	lcd_1.print("Mostrando");
   	lcd_1.setCursor(0, 1);
   	lcd_1.print("Datos...");
   }
@@ -49,7 +52,6 @@ void loop()
     startData = false;
     datos();
     startInfo= false;
-    startData = true;
   }
   
 }
@@ -66,52 +68,75 @@ void almacenarDatos() {
 }
 
 void mostrarDatos(float vol, float frec){
-  lcd_1.clear();
   lcd_1.setCursor(0, 1);
   lcd_1.print("V=");
   lcd_1.print(vol,2);
   lcd_1.setCursor(7, 1);
   lcd_1.print("f=");
-  lcd_1.print(frec,9);
-  delay(3000);
+  lcd_1.print(frec,2);
 }
 
 void datos(){
-  float min = signal[0];
-  float max = signal[0];
-  float amplitud;
-  float frecuencia;
-  
-  for (int j=1; j<arregloSize; j++){
-    if (signal[j]<min){
-    	min = signal[j];
+  lcd_1.clear();
+
+  float min=signal[0];
+  float max=signal[0];
+  float amplitud, frecuencia, periodo, t1, t2;
+  float *dirsignal;
+  float *maxnext;
+  int m= 0;
+  maxnext = signal;
+  for (m; m<arregloSize; m++){
+    if (signal[m]<min){
+    	min = signal[m];
     }
-    if (signal[j]>max){
-    	max = signal[j];
-    }  
+    if (signal[m]>max){
+    	max = signal[m];
+        *maxnext= signal[m+1];
+    }
   }
-  
   //Amplitud
   if (min*max < 0){
   	amplitud = abs(min)+ max;
-  } else if(min*max>0){
+  } else if(min*max >=0.0){
   	amplitud = abs(abs(max)-abs(min));
   }
+  //FRECUENCIA:
   
-  //Frecuencia. Primero hallamos el periodo.
-  int t1 = 0;
-  int t2 = 0;
-  for (int k=1; k<arregloSize; k++){
-    if (abs(abs(max) - signal[k])<tolerancia && t2!=k){
-    	t1 = k;
-        k++;
+  float cero = (min + max)/2;
+  dirsignal = signal;
+  for (int j = 0; j < arregloSize; j++) {
+    if (abs(*dirsignal-cero)<tolerancia){
+    	t1 = j;
+      	break;
     }
-    if (abs(abs(max) - signal[k])<tolerancia && t1 == k){
-    	t2 = k;
-    	break;
-    }
+    dirsignal++;
   }
-  frecuencia = 1/(abs(t2-t1)*0.01);
+  
+  for (int j = 0; j < arregloSize; j++) {
+    if (abs(*dirsignal-cero)<tolerancia){
+    	t2 = j;
+      	break;
+    }
+    dirsignal++;
+  }
+  float diferencia = abs(abs(max) - abs(*maxnext));
+  Serial.println(diferencia);
+   if (diferencia == 0){
+        lcd_1.setCursor(0, 0);
+        lcd_1.print("Cuadrada");
+    } else if (diferencia < tolerancia && diferencia>0) {
+        lcd_1.setCursor(0, 0);
+        lcd_1.print("Senoidal");
+    } else if (diferencia > tolerancia) {
+        lcd_1.setCursor(0, 0);
+        lcd_1.print("Triangular");
+    } else {
+        lcd_1.setCursor(0, 0);
+        lcd_1.print("Desconocida");
+    }
+  periodo = 2*abs(t2-t1)/100;
+  frecuencia = 1/periodo;
   
   mostrarDatos(amplitud, frecuencia);
   delete[] signal;
