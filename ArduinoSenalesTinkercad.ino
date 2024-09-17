@@ -7,19 +7,17 @@ int buttonStart = 4;
 int buttonInfo = 2;
 bool startData = false;
 bool startInfo = false;
-float tolerancia = 0.03;
-unsigned long finTime = 0;
-unsigned long startTime =0;
+float tolerancia = 0.04;
 
 int arregloSize = 230;
-float *signal=new float[230];
+float *signal = new float[arregloSize];
 
 int i = 0;
 
 void setup()
 {
-  pinMode(2, INPUT_PULLUP);
-  pinMode(4, INPUT_PULLUP);
+  pinMode(2, INPUT);
+  pinMode(4, INPUT);
   Serial.begin(9600);
   lcd_1.begin(16, 2);
 }
@@ -60,10 +58,12 @@ void almacenarDatos() {
   val = analogRead(analogPin);
   val = val*(5.0/1023.0);
   signal[i] = val;
+  Serial.println(val);
   delay(10);
   i++;
   if (i >= arregloSize){
     i = 0;
+    startData = false;
   }
 }
 
@@ -82,7 +82,6 @@ void datos(){
   float min=signal[0];
   float max=signal[0];
   float amplitud, frecuencia, periodo, t1, t2;
-  float *dirsignal;
   float *maxnext;
   int m= 0;
   maxnext = signal;
@@ -104,24 +103,21 @@ void datos(){
   //FRECUENCIA:
   
   float cero = (min + max)/2;
-  dirsignal = signal;
   for (int j = 0; j < arregloSize; j++) {
-    if (abs(*dirsignal-cero)<tolerancia){
+    if (abs(abs(signal[j])-cero)<tolerancia){
     	t1 = j;
       	break;
     }
-    dirsignal++;
   }
   
   for (int j = 0; j < arregloSize; j++) {
-    if (abs(*dirsignal-cero)<tolerancia){
+    if (abs(abs(signal[j])-cero)<tolerancia && t1!=j){
     	t2 = j;
       	break;
     }
-    dirsignal++;
   }
   float diferencia = abs(abs(max) - abs(*maxnext));
-  Serial.println(diferencia);
+  //Serial.println(diferencia);
    if (diferencia == 0){
         lcd_1.setCursor(0, 0);
         lcd_1.print("Cuadrada");
@@ -135,9 +131,8 @@ void datos(){
         lcd_1.setCursor(0, 0);
         lcd_1.print("Desconocida");
     }
-  periodo = 2*abs(t2-t1)/100;
+  periodo = 2*10*abs(t2-t1)/1000;
   frecuencia = 1/periodo;
-  
+  Serial.println(periodo);
   mostrarDatos(amplitud, frecuencia);
-  delete[] signal;
 }
